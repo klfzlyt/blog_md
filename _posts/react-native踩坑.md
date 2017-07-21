@@ -4,6 +4,9 @@ date: 2017-07-02 21:20:52
 tags: react-native
 ---
 
+2017-07-20更新:
+在本地化的时候遇到点问题，如果没有本地话过的话，get key内部throw的错无法catch到
+
 2017-07-09更新：
 做了个TODO的小demo,用的内部的组内的redux业务框架，如下：
 ![](http://p0.meituan.net/dpgroup/a40c889447c718495475548592821db3926229.jpg)
@@ -285,3 +288,11 @@ react-native run-ios
 ```
 这样得到的应用是有ios文件么？
 
+ps aux | grep react-native
+
+不要随意关app，
+调试可以删掉app重来
+
+android无法naitive debug??
+
+cp ./gradle.properties /Users/liyangtao/work/dux-rn/duxRnTest/android/app

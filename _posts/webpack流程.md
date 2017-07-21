@@ -119,3 +119,5 @@ webpack使用acorn解析每一个经loader处理过的source，并且成AST，�
 以上的这一步，非常非常关键。唯一的id值决定了webpack在最后的编译结果中，是否会存在重复代码。 而缓存在compilation对象上，则决定了webpack可以在plugin阶段直接拿取模块资源进行二度加工。
 
 相关参考资料：<http://taobaofed.org/blog/2016/08/24/react-key/>
+
+ 

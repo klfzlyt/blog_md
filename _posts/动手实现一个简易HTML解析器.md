@@ -19,6 +19,11 @@ tags: 前端基础
 3. [CSS解析篇](#2)
 4. [应用CSS样式到DOM中](#3)
 5. [事件系统](#4)
+
+可以先看看效果
+<div>
+<script async src="//en.jsrun.net/SSYKp/embed/all/light/"></script></div>
+
 * * *
 ## 一.概述
 在浏览器中，我们的类有以下的继承关系，如一个div dom 继承自HTMLElemnt,HTMLElemnt继承自Element等。为了方便起见，将一些重要的如dispatchEvent等方法，children，parent，attributes等属性都纳入HTMLElement中。并且依照css object model，构造cssom对象。

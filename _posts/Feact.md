@@ -6,7 +6,7 @@ tags: React
 
 下面的文章介绍了React的内部机制，本文的一部分参考了文章中的实现。
 
-[嫌麻烦可以跳到最后实现部分](#jumpend)
+[嫌麻烦可以点开跳到最后实现部分](#jumpend)
 
 > 原文地址：
  http://www.mattgreer.org/articles/react-internals-part-three-basic-updating/
@@ -42,7 +42,7 @@ tags: React
 6 怎么挂载一个列表或者是一个有多个children的元素？
 
 先来看一个例子：
-<div><script async src="//jsrun.net/KSYKp/embed/js,html,result/light/"></script></div>
+<div><script async src="//en.jsrun.net/KSYKp/embed/all/light/"></script></div>
  
 首先jsx经过babel转换为React.creatElement
 
@@ -66,7 +66,7 @@ tags: React
     },
 ```
 我们这里都是接受了一个`type`，`props`,`children`,用es6的语法接受children数组,我们后续会根据`type`的不同实例化不同的虚拟dom
-
+<!--more-->
 再来看render，render了什么？
 ```js
   //React.render
@@ -409,11 +409,11 @@ getHost() {
 ```
 
 `FeactDOMComponent`的更新稍微麻烦一些，需要考虑diff,以做出最小改动,在理解diff上，有一个很重要的点，就是`FeactDOMComponent`的更新，只需要考虑一级child节点，diff的比较对象是内部实例，之所以可以`for in`进行遍历还有顺序保证，即新children的从左到右的顺序，并且使用从0自增的`nextIndex`,是由于之前介绍的在key前[加`.`的操作](#jumperdot)，可以保证是for循环的顺序，可用用nextIndex自增，得到的index和for的index一致，更新一个`FeactDOMComponent`的大致流程是：
-1 依次更新该`FeactDOMComponent`下的所有children，该更新的更新，该新挂载的重新挂载，得到新的children内部虚拟dom实例（这个过程会产生递归）
-2 收集新增加的节点（包括替换旧的也算新增），和要删除的节点
-3 做O(n)的diff,这里的这个n,指的是所有一级children的个数，关于[diff文章](https://zhuanlan.zhihu.com/p/20346379)说的很清楚了，有几个问题可以解答下：
+1. 依次更新该`FeactDOMComponent`下的所有children，该更新的更新，该新挂载的重新挂载，得到新的children内部虚拟dom实例（这个过程会产生递归）
+2. 收集新增加的节点（包括替换旧的也算新增），和要删除的节点
+3. 做O(n)的diff,这里的这个n,指的是所有一级children的个数，关于[diff文章](https://zhuanlan.zhihu.com/p/20346379)说的很清楚了，有几个问题可以解答下：
 `_mountIndex`怎么来的？在初始挂载的时候，就会按照children的`index`次序，为每个child增加`_mountIndex`属性，lastIndex的意义是什么？访问过的旧有节点的最大位置，这个index只会增加。lastPlaceNode是什么？是按顺序得到的新节点的真实dom，所有的新增节点，节点移动，都是在这个`lastPlaceNode`之后，所以也叫`afterNode`，`mountImages`用来保存所有新增节点的真实dom,且所有的新增dom都在第二步进行完成放入数组中了。
-4 根据得到的更新数组，进行patch操作，更新真实dom
+4. 根据得到的更新数组，进行patch操作，更新真实dom
 > 利用`lastPlaceNode`的好处是，我们可以对于`MOVE_EXISTING`的操作，我们也可以调用原生的`insertBefore`方法，这个方法把原有节点移动到`lastPlaceNode`这个后面，刚好符合要求（按照新的children顺序 我们的新节点，不管是移动的新节点，还是真正新增的节点，都要放在lastPlaceNode之后）
 
 
@@ -533,4 +533,4 @@ var ReactEventEmitter = {
 ```
 ### 最终代码：
 <div id="jumpend">
-<script async src="//jsrun.net/iuYKp/embed/js,html,result/light/"></script></div>    
+<script async src="//en.jsrun.net/iuYKp/embed/all/light/"></script></div>    

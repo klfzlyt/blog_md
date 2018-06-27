@@ -21,15 +21,20 @@ tags: React
 
 在实现react过程中，有一些简单术语：
 1. 内部实例---指不对用户暴露的virtual Dom实例
-我们的虚拟dom对应的具体对象，有`FeactDOMTextComponent`,`FeactDOMComponent`,`FeactCompositeComponentWrapper`,`FeactEmptyComponent`
+我们的虚拟dom对应的具体对象，有`FeactDOMTextComponent`,`FeactDOMComponent`,`FeactCompositeComponentWrapper`,`FeactEmptyComponent` 指的是虚拟dom的面向对象实现，存在于内存中
 这些用户无感知，仅在内部使用
-2. 外部实例：我们常用的React.Component的实例，有render方法等
-3. element---指React.creatElemnt得到的vitual dom
+2. 外部实例：我们常用的React.Component的实例，有render componentDidMount方法等生命周期（这一部分对我们也是可见的）
+3. element---指React.creatElemnt得到的vitual dom（这一部分是对我们可以见到的,就是jsx）
 
 本文基于上述文章思路分几个步骤实现react
 一. 初始挂载
+    递归挂载
 二. setState状态变更
+    异步
+    diff
+    patch
 三. 事件实现
+    代理
 
  
 ## 一. 初始挂载
@@ -147,7 +152,7 @@ const FeactReconciler = {
 我们根据传入的不同type进行不同的初始化,接下来我们看看`mountComponent`方法，
 首先这个方法的意义是：**生成该虚拟dom对应的真实dom**
 这个方法中，我们还设置当前虚拟节点的父虚拟节点
-> 对于`FeactEmptyComponent`内部组件
+> 对于`FeactEmptyComponent`内部组件(return null的情形)
 我们可以返回一个注释节点，以便让虚拟dom有个真实节点可以对应
 ```js
  mountComponent(hostParent, hostContainerInfo) {
@@ -182,20 +187,15 @@ mountComponent(hostParent, hostContainerInfo) {
         const componentInstance = new Component(this._currentElement.props);
         //componentInstance 这个实例不是react vnode 的实例 是React.component的实例 因而可以调用render方法
         this._instance = componentInstance;
-
         //我们还可以保存内部实例到外部实例的映射
         FeactInstanceMap.set(componentInstance, this);
-
         if (componentInstance.componentWillMount) {
             componentInstance.componentWillMount();
         }
-
         const markup = this.performInitialMount();
-
         if (componentInstance.componentDidMount) {
             componentInstance.componentDidMount();
         }
-
         return markup;
     }
 ```
@@ -205,11 +205,9 @@ mountComponent(hostParent, hostContainerInfo) {
     performInitialMount() {
         //调用自定义组件的render方法，其实就是调用creactElement 出来的
         const renderedElement = this._instance.render();
-
         //virtual node 工厂得到child 可能会多个不同的实例 公用一组接口
         const child = instantiateFeactComponent(renderedElement);
         this._renderedComponent = child;
-
         //在这里抹平了mountComponent的过程
         //child.mountComponent 可能是FeactDOMComponent.mountComponent
         //也可能是FeactCompositeComponentWrapper.mountComponent
@@ -334,6 +332,37 @@ function instantiateFeactComponentArrayItem(ele) {
         return domElement;
     }
 ```
+如果不给key，靠什么索引？靠index
+在list数组中，用key来标识数组创建子组件时，若数组的内容只是作为纯展示，而不涉及到数组的动态变更，其实是可以使用index作为key的。
+
+小于才移动，大于等于都不移动
+
+但是，若涉及到数组的动态变更，例如数组新增元素、删除元素或者重新排序等，这时index作为key会导致展示错误的数据。本文开始引入的例子就是最好的证明。
+```js
+
+{this.state.data.map((v,idx)=><Item key={idx} v={v} />)}
+// 开始时：['a','b','c']=>
+<ul>
+    <li key="0">a <input type="text"/></li>
+    <li key="1">b <input type="text"/></li>
+    <li key="2">c <input type="text"/></li>
+</ul>
+
+// 数组重排 -> ['c','b','a'] =>
+<ul>
+    <li key="0">c <input type="text"/></li>
+    <li key="1">b <input type="text"/></li>
+    <li key="2">a <input type="text"/></li>
+</ul>
+```
+上面实例中在数组重新排序后，key对应的实例都没有销毁，而是重新更新。具体更新过程我们拿key=0的元素来说明， 数组重新排序后：
+
+组件重新render得到新的虚拟dom；
+新老两个虚拟dom进行diff，新老版的都有key=0的组件，react认为同一个组件，则只可能更新组件；
+然后比较其children，发现内容的文本内容不同（由a--->c)，而input组件并没有变化，这时触发组件的componentWillReceiveProps方法，从而更新其子组件文本内容;
+因为组件的children中input组件没有变化，其又与父组件传入的任props没有关联，所以input组件不会更新(即其componentWillReceiveProps方法不会被执行)，导致用户输入的值不会变化。
+这就是index作为key存在的问题，所以不要使用index作为key。
+
 按照上述情况，我们调用`mountChildren`得到一个children真实dom的数组，然后挂在宿主dom上，获得chilren真实dom的过程是对每一个一级children执行`mountComponent`获得其真实dom,关键是有些chilren是数组的形式:
 ```js
  Feact.createElement('div', {}, ['child 1',null,'child 3'],'child 4')
@@ -355,8 +384,26 @@ function instantiateFeactComponentArrayItem(ele) {
 <div></div>
 
 ## 二. setState状态变更
-
-在 http://www.mattgreer.org/articles/react-internals-part-three-basic-updating/ 文章中,实现了setState的类似缓存变更功能，但没有对多children的情况做处理，只简单处理字符串，diff的过程也没有体现，模仿react，我们需要定义`receiveComponent`这个方法，这个方法的具体意义是：**更新本组件虚拟dom树下的的真实dom**，也就是说，执行了这个方法之后，这个虚拟dom包括这个虚拟dom之下的所有叶子都得到了更新，更新虚拟dom的主要是更新属性，对于`FeactDOMComponent`,需要更新这个虚拟dom的自身的属性，以及更新其所有的一级child,通过递归依次向下，比如有个&lt;div&gt;&lt;span&gt;&lt;/span&gt;&lt;/div&gt;那么更新`div`的话，其div下的所有children也将得到更新。
+每次在setState的过程中，把状态保存到一个队列中，在需要更新的时候，把状态全部拿出来合并，得到一个最终状态，再统一更新，那么什么时候知道需要更新呢，在react中，有一个事务的概念，在触发了生命周期，或者是触发了事件的时候，会进入一个大的事务的中，也就是我们的setState操作都在大事务的前中期，在事务的结束阶段，我们才把队列中的状态拿出来，合并，并更新组件状态，render也是在这之后才发生
+对于事件
+```js
+	function enqueueUpdate(component) {	
+	  if (!batchingStrategy.isBatchingUpdates) {
+          //在一开始就进入了更新的事务
+          //大部分都是setTimeout 中进行setState才进入此
+	    batchingStrategy.batchedUpdates(enqueueUpdate, component);
+	    return;
+	  }
+	
+	  dirtyComponents.push(component);
+	  if (component._updateBatchNumber == null) {
+	    component._updateBatchNumber = updateBatchNumber + 1;
+	  }
+	}
+```
+在setTimeout中 事务是一气呵成
+而在一些生命周期，或事件dispatchevent中，batchupdate的flag早在一开始就设置为了true
+在http://www.mattgreer.org/articles/react-internals-part-three-basic-updating/ 文章中,实现了setState的类似缓存变更功能，但没有对多children的情况做处理，只简单处理字符串，diff的过程也没有体现，模仿react，我们需要定义`receiveComponent`这个方法，这个方法的具体意义是：**更新本组件虚拟dom树下的的真实dom**，也就是说，执行了这个方法之后，这个虚拟dom包括这个虚拟dom之下的所有叶子都得到了更新，更新虚拟dom的主要是更新属性，对于`FeactDOMComponent`,需要更新这个虚拟dom的自身的属性，以及更新其所有的一级child,通过递归依次向下，比如有个&lt;div&gt;&lt;span&gt;&lt;/span&gt;&lt;/div&gt;那么更新`div`的话，其div下的所有children也将得到更新。
 
 根据react官方介绍，我们还需要保存每个虚拟dom的hostNode，即为其对应的真实虚拟dom,`FeactDOMComponent`这样的虚拟dom，很好保存，在mount组件的时候即可以保存，对于合成组件即自定义组件，我们可以获得其render出来元素的hostNode.
 ```js
@@ -364,6 +411,7 @@ getHost() {
         return this._renderedComponent.getHost();
     }
 ```
+那么什么时候知道需要更新呢，在react中，有一个事务的概念，在触发了生命周期，或者是触发了事件的时候，会进入一个大的事务的中，也就是我们的setState操作都在大事务的前中期，在事务的结束阶段，我们才把队列中的状态拿出来，合并，并更新组件状态，render也是在这之后才发生
 
 我们再原封不动使用React的`shouldUpdateFeactComponent`来判断是否需要更新组件，可以从这个函数中看出，我们更新组件的有几种情况，对于文本，数字，我们都要更新，对于虚拟DOM，我们只要type相等，且key相等就需要更新，这里key相等也有`undefined == undefined`的情形
 

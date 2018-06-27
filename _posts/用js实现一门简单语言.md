@@ -15,9 +15,11 @@ tags: 编译 前端
     }
 ```
 
-示例代码
+#### 示例代码
 [parse_compiler](https://github.
 com/klfzlyt/parse_compiler)
+<div><script async src="//jsrun.net/IWgKp/embed/result/light/"></script></div>
+
 
 ## 2.目标
 给入下面一段程序片段，我们希望用js写出编译器，得到对应的结果
@@ -276,28 +278,29 @@ move() {
 
 
 把这些基础parse模块结合起来，就可以得到ast
-parseFactorExpression
-parseFunctionDeclaration
-parseReturnStatement
-parseForStatement
-parseStatement
-parseCallExpression
-parseScript
-parseBlock
-parseStatementListItem
-parseUnaryExpression
-parseMutilOrdivideExpression
-parseAssignmentExpression
-parseArithExpression
-parseRelationExpression
-parseEqulityExpression
-parseAndExpression
-parseOrExpressgion
-parseBinaryExpression
-parseConditionalExpression
-parseType
-parseVariableDeclaration
-parseIfStatement
+
+1. parseFactorExpression
+1. parseFunctionDeclaration
+1. parseReturnStatement
+1. parseForStatement
+1. parseStatement
+1. parseCallExpression
+1. parseScript
+1. parseBlock
+1. parseStatementListItem
+1. parseUnaryExpression
+1. parseMutilOrdivideExpression
+1. parseAssignmentExpression
+1. parseArithExpression
+1. parseRelationExpression
+1. parseEqulityExpression
+1. parseAndExpression
+1. parseOrExpressgion
+1. parseBinaryExpression
+1. parseConditionalExpression
+1. parseType
+1. parseVariableDeclaration
+1. parseIfStatement
 
 
 关于表达式的解析，我们这样来
